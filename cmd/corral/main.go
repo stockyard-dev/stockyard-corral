@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/stockyard-dev/stockyard-corral/internal/server"
 	"github.com/stockyard-dev/stockyard-corral/internal/store"
@@ -26,6 +27,13 @@ func main() {
 	}
 
 	log.SetFlags(log.Ltime | log.Lshortfile)
+
+	retentionDays := 30
+	if r := os.Getenv("RETENTION_DAYS"); r != "" {
+		if n, err := strconv.Atoi(r); err == nil && n > 0 {
+			retentionDays = n
+		}
+	}
 
 	port := 8760
 	if p := os.Getenv("PORT"); p != "" {
@@ -50,7 +58,21 @@ func main() {
 	log.Printf("  Webhook relay:  http://localhost:%d/hook/{endpoint_id}", port)
 	log.Printf("  API:            http://localhost:%d/api", port)
 	log.Printf("  Live stream:    http://localhost:%d/api/endpoints/{id}/stream", port)
+	log.Printf("  Retention:      %d days", retentionDays)
 	log.Printf("")
+
+	// Background retention cleanup — runs every 6 hours
+	go func() {
+		for {
+			time.Sleep(6 * time.Hour)
+			n, err := db.Cleanup(retentionDays)
+			if err != nil {
+				log.Printf("[cleanup] error: %v", err)
+			} else if n > 0 {
+				log.Printf("[cleanup] deleted %d events older than %d days", n, retentionDays)
+			}
+		}
+	}()
 
 	srv := server.New(db, port)
 	if err := srv.Start(); err != nil {

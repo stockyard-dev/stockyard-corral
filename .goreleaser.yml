@@ -1,0 +1,47 @@
+version: 2
+
+project_name: stockyard-corral
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: corral
+    main: ./cmd/corral/
+    binary: corral
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: corral
+    builds: [corral]
+    name_template: "corral_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - LICENSE
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - Merge pull request
+      - Merge branch
