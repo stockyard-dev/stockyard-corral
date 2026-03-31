@@ -69,6 +69,7 @@ func (s *Server) routes() {
 	// Status
 	s.mux.HandleFunc("GET /api/endpoints/{id}/export", s.handleExportEvents)
 	s.mux.HandleFunc("GET /api/status", s.handleStatus)
+	s.mux.HandleFunc("GET /ui", s.handleUI)
 	s.mux.HandleFunc("GET /health", s.handleHealth)
 
 	// Version

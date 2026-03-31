@@ -79,6 +79,7 @@ func main() {
 	log.Printf("  API:            http://localhost:%d/api", port)
 	log.Printf("  Live stream:    http://localhost:%d/api/endpoints/{id}/stream", port)
 	log.Printf("  Retention:      %d days", retentionDays)
+	log.Printf("  Dashboard:      http://localhost:%d/ui", port)
 	log.Printf("")
 
 	// Background retention cleanup — runs every 6 hours
