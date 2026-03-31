@@ -21,6 +21,7 @@ type Server struct {
 	port     int
 	subs     sync.Map // endpoint_id → []*subscriber
 	client   *http.Client
+	limits   Limits
 }
 
 type subscriber struct {
@@ -28,12 +29,13 @@ type subscriber struct {
 	cancel func()
 }
 
-func New(db *store.DB, port int) *Server {
+func New(db *store.DB, port int, limits Limits) *Server {
 	s := &Server{
-		db:   db,
-		mux:  http.NewServeMux(),
-		port: port,
+		db:     db,
+		mux:    http.NewServeMux(),
+		port:   port,
 		client: &http.Client{Timeout: 30 * time.Second},
+		limits: limits,
 	}
 	s.routes()
 	return s
@@ -102,6 +104,13 @@ func (s *Server) handleCreateEndpoint(w http.ResponseWriter, r *http.Request) {
 	json.NewDecoder(r.Body).Decode(&req)
 	if req.Name == "" {
 		req.Name = "endpoint-" + time.Now().Format("20060102-150405")
+	}
+	if s.limits.MaxEndpoints > 0 {
+		eps, _ := s.db.ListEndpoints()
+		if LimitReached(s.limits.MaxEndpoints, len(eps)) {
+			writeJSON(w, 402, map[string]string{"error": "free tier limit: " + itoa(s.limits.MaxEndpoints) + " endpoints max — upgrade to Pro", "upgrade": "https://stockyard.dev/corral/"})
+			return
+		}
 	}
 	ep, err := s.db.CreateEndpoint(req.Name, req.Desc)
 	if err != nil {
@@ -434,6 +443,8 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]string{"status": "ok"})
 }
+
+func itoa(n int) string { return strconv.Itoa(n) }
 
 func writeJSON(w http.ResponseWriter, code int, v any) {
 	w.Header().Set("Content-Type", "application/json")

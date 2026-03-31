@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/stockyard-dev/stockyard-corral/internal/server"
+	"github.com/stockyard-dev/stockyard-corral/internal/license"
 	"github.com/stockyard-dev/stockyard-corral/internal/store"
 )
 
@@ -47,6 +48,20 @@ func main() {
 		dataDir = "./data"
 	}
 
+	// License validation — offline Ed25519 check, no network call
+	licenseKey := os.Getenv("CORRAL_LICENSE_KEY")
+	licInfo, licErr := license.Validate(licenseKey, "corral")
+	if licenseKey != "" && licErr != nil {
+		log.Printf("[license] WARNING: %v — running in free tier", licErr)
+		licInfo = nil
+	}
+	limits := server.LimitsFor(licInfo)
+	if licInfo != nil && licInfo.IsPro() {
+		log.Printf("  License:   Pro (%s)", licInfo.CustomerID)
+	} else {
+		log.Printf("  License:   Free tier (set CORRAL_LICENSE_KEY to unlock Pro)")
+	}
+
 	db, err := store.Open(dataDir)
 	if err != nil {
 		log.Fatalf("database: %v", err)
@@ -74,7 +89,7 @@ func main() {
 		}
 	}()
 
-	srv := server.New(db, port)
+	srv := server.New(db, port, limits)
 	if err := srv.Start(); err != nil {
 		log.Fatalf("server: %v", err)
 	}
