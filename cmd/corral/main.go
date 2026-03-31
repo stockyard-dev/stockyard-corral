@@ -62,6 +62,11 @@ func main() {
 		log.Printf("  License:   Free tier (set CORRAL_LICENSE_KEY to unlock Pro)")
 	}
 
+	// Pro licenses override retention days
+	if limits.RetentionDays > retentionDays {
+		retentionDays = limits.RetentionDays
+	}
+
 	db, err := store.Open(dataDir)
 	if err != nil {
 		log.Fatalf("database: %v", err)

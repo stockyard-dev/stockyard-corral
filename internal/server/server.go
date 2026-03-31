@@ -67,6 +67,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("/hook/{id}/{path...}", s.handleWebhookIngest)
 
 	// Status
+	s.mux.HandleFunc("GET /api/endpoints/{id}/export", s.handleExportEvents)
 	s.mux.HandleFunc("GET /api/status", s.handleStatus)
 	s.mux.HandleFunc("GET /health", s.handleHealth)
 
@@ -140,6 +141,10 @@ func (s *Server) handleDeleteEndpoint(w http.ResponseWriter, r *http.Request) {
 // --- Event handlers ---
 
 func (s *Server) handleListEvents(w http.ResponseWriter, r *http.Request) {
+	if q := r.URL.Query().Get("q"); q != "" && !s.limits.EventSearch {
+		writeJSON(w, 402, map[string]string{"error": "event search requires Pro — upgrade at https://stockyard.dev/corral/", "upgrade": "https://stockyard.dev/corral/"})
+		return
+	}
 	limit := 100
 	if l := r.URL.Query().Get("limit"); l != "" {
 		if n, err := strconv.Atoi(l); err == nil {
@@ -174,6 +179,10 @@ func (s *Server) handleGetEvent(w http.ResponseWriter, r *http.Request) {
 // --- Replay ---
 
 func (s *Server) handleReplayEvent(w http.ResponseWriter, r *http.Request) {
+	if !s.limits.ReplayHistory {
+		writeJSON(w, 402, map[string]string{"error": "replay history requires Pro — upgrade at https://stockyard.dev/corral/", "upgrade": "https://stockyard.dev/corral/"})
+		return
+	}
 	evt, err := s.db.GetEvent(r.PathValue("id"))
 	if err != nil {
 		writeJSON(w, 404, map[string]string{"error": "event not found"})
@@ -238,7 +247,16 @@ func (s *Server) handleCreateForward(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 400, map[string]string{"error": "target_url required"})
 		return
 	}
-	if req.Retries <= 0 {
+	if s.limits.MaxForwardTargets > 0 {
+		existing, _ := s.db.ListForwardRules(epID)
+		if LimitReached(s.limits.MaxForwardTargets, len(existing)) {
+			writeJSON(w, 402, map[string]string{"error": "free tier limit: " + itoa(s.limits.MaxForwardTargets) + " forward target per endpoint — upgrade to Pro", "upgrade": "https://stockyard.dev/corral/"})
+			return
+		}
+	}
+	if !s.limits.RetryDeliveries {
+		req.Retries = 0 // free tier: no auto-retry
+	} else if req.Retries <= 0 {
 		req.Retries = 3
 	}
 	s.db.CreateForwardRule(epID, req.Target, req.FiltHdr, req.FiltVal, req.Retries)
@@ -432,6 +450,22 @@ func (s *Server) notifySubscribers(epID string, evt *store.Event) {
 		default: // Drop if full
 		}
 	}
+}
+
+// --- Export (Pro) ---
+
+func (s *Server) handleExportEvents(w http.ResponseWriter, r *http.Request) {
+	if !s.limits.ExportJSON {
+		writeJSON(w, 402, map[string]string{"error": "JSON export requires Pro — upgrade at https://stockyard.dev/corral/", "upgrade": "https://stockyard.dev/corral/"})
+		return
+	}
+	events, err := s.db.ListEvents(r.PathValue("id"), 10000)
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	w.Header().Set("Content-Disposition", `attachment; filename="events.json"`)
+	writeJSON(w, 200, map[string]any{"events": events, "count": len(events)})
 }
 
 // --- Status ---
