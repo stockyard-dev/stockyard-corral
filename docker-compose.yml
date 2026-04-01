@@ -1,0 +1,32 @@
+# docker-compose.yml for corral
+# Quick start:
+#   FENCE_ENCRYPTION_KEY=$(openssl rand -hex 32) docker compose up -d
+#
+# For production, set env vars in a .env file or your orchestrator secrets.
+# Never commit real keys to version control.
+
+services:
+  corral:
+    image: ghcr.io/stockyard-dev/stockyard-corral:latest
+    # Or build locally:
+    # build: .
+    ports:
+      - "8760:8760"
+    environment:
+      - PORT=${{STOCKYARD_PORT:-8760}}
+      - DATA_DIR=${{STOCKYARD_DATA_DIR:-/data}}
+      - RETENTION_DAYS=${{STOCKYARD_RETENTION_DAYS:-30}}
+      - CORRAL_LICENSE_KEY=${{STOCKYARD_CORRAL_LICENSE_KEY:-}}
+    volumes:
+      - corral-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8760/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  corral-data:
+    driver: local
