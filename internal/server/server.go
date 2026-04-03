@@ -76,6 +76,11 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/version", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, map[string]any{"product": "stockyard-corral", "version": "0.1.0"})
 	})
+
+	// Tier (for upgrade banner)
+	s.mux.HandleFunc("GET /api/tier", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, 200, map[string]any{"tier": s.limits.Tier, "upgrade_url": "https://stockyard.dev/corral/"})
+	})
 }
 
 func (s *Server) Start() error {

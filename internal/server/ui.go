@@ -77,6 +77,11 @@ input:focus,select:focus{border-color:var(--leather)}
 </div>
 <div class="main">
 
+<div id="upgrade-banner" class="upgrade" style="display:none">
+  <strong style="color:var(--cream)">Free tier</strong> — 3 endpoints, 1K events/mo, 7-day retention.
+  <a href="https://stockyard.dev/corral/" target="_blank">Upgrade to Pro for $0.99/mo →</a>
+</div>
+
 <div class="cards" id="stat-cards">
   <div class="card"><span class="card-val" id="s-eps">—</span><span class="card-lbl">Endpoints</span></div>
   <div class="card"><span class="card-val" id="s-evts">—</span><span class="card-lbl">Events</span></div>
@@ -197,6 +202,7 @@ async function createEndpoint(){
 
 async function refresh(){await Promise.all([loadStats(),loadEndpoints()]);if(activeEp)loadEvents(activeEp);}
 refresh();autoReload(refresh,6000);
+fetch(API+'/tier').then(r=>r.json()).then(j=>{if(j.tier==='free'){document.getElementById('upgrade-banner').style.display='block';document.getElementById('tier-badge').className='badge badge-free';document.getElementById('tier-badge').textContent='Free'}else{document.getElementById('tier-badge').className='badge badge-pro';document.getElementById('tier-badge').textContent='Pro'}}).catch(()=>{document.getElementById('upgrade-banner').style.display='block'});
 </script></body></html>`
 
 func (s *Server) handleUI(w http.ResponseWriter, r *http.Request) {
