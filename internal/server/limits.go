@@ -28,8 +28,8 @@ type Limits struct {
 // FreeLimits returns the free tier limits (matches stockyard.dev/corral/).
 func FreeLimits() Limits {
 	return Limits{
-		MaxEndpoints:      3,
-		MaxEventsPerMonth: 1000,
+		MaxEndpoints:      2,
+		MaxEventsPerMonth: 500,
 		RetentionDays:     7,
 		MaxForwardTargets: 1,
 		ReplayHistory:     false,
