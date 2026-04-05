@@ -58,6 +58,7 @@ func main() {
 	}
 	defer db.Close()
 
+	log.Printf("  Questions? hello@stockyard.dev")
 	log.Printf("")
 	log.Printf("  Stockyard Corral %s", version)
 	log.Printf("  Webhook relay:  http://localhost:%d/hook/{endpoint_id}", port)
